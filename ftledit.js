@@ -16,7 +16,13 @@ function div(parent, classname) {
 function span(parent, classname) {
 	return newinstance("span", parent, classname);
 }
+class LineOptimizer {
+	constructor() {
+		
+	}
+}
 class Editor extends HTMLEntity {
+	
 	Refresh() {
 		this.Lines.innerHTML = "";
 		this.LineNumbers.innerHTML = "";
@@ -25,8 +31,9 @@ class Editor extends HTMLEntity {
 			var linenum = span(this.LineNumbers);
 			linenum.textContent = i+1;
 			var lineContainer = div(this.Lines);
+			this.LineHeight = linenum.clientHeight;
 			if (lines[i].length == 0) {
-				lineContainer.style.height = linenum.clientHeight + "px";
+				lineContainer.style.minHeight = linenum.clientHeight + "px";
 			} else {
 				var line = span(lineContainer);
 				line.textContent = lines[i];
