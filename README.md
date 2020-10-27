@@ -1,2 +1,2 @@
 # FTLEdit
-Fast JS/CSS Web editor
+A Work in Progress Fast JS/CSS Web Text Editor
