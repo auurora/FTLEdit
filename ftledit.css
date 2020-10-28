@@ -57,6 +57,11 @@
 .ftledit\.editor\.linenumbers > span {
 	min-height: 1em;
 }
+.ftledit\.editor\.lines > div > span, .ftledit\.editor\.lengthcalculator {
+	white-space: pre;
+	pointer-events: none;
+	word-break: break-all;
+}
 .ftledit\.editor\.lines {
 	flex-grow: 2;
 	min-height: 100%;

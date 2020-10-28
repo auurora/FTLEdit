@@ -147,6 +147,7 @@ class LineOptimizer {
 		
 	}
 }
+
 var Cursors = [];
 var CursorOpacity = 0;
 setInterval(function() {
@@ -173,7 +174,7 @@ class Editor extends HTMLEntity {
 		
 		this.LineHighlight = div(this.Background, "ftledit.editor.linehighlight");
 		
-		this.LengthCalculator = div(this.Background, "ftledit.editor.lengthcalculator");
+		this.LengthCalculator = span(this.Background, "ftledit.editor.lengthcalculator");
 		
 		this.Cursor = div(this.Page, "ftledit.editor.cursor");
 		
