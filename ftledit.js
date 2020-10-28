@@ -37,8 +37,9 @@ class LineOptimizer {
 			this.updateline(this.linepos(line+i));
 			this.updateline(this.linepos(line+i-1));
 			
-			this.setcursorpos(line+i, textlines[i].length);
+			
 		}
+		this.setcursorpos(line+textlines.length-1, textlines[textlines.length-1].length);
 		this.lines[this.linepos(this.selectionStart[0])][0] += end;
 		this.updateline(this.linepos(this.selectionStart[0]));
 	}

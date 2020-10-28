@@ -1,6 +1,6 @@
 .ftledit\.editor {
-	width: 500px;
-	height: 500px;
+	min-width: 50px;
+	min-height: 16px;
 	overflow: auto;
 	
 }
