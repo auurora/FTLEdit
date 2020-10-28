@@ -96,6 +96,7 @@ class LineOptimizer {
 		charwidth = this.editor.calculateLength(this.lines[this.linepos(line)][0].substr(0,letter))
 		
 		this.editor.Cursor.style.left = `${1+this.linenumbers.clientWidth+charwidth}px`;
+		this.editor.Cursor.scrollIntoView();
 	}
 	
 	moveleft() {
