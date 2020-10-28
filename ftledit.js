@@ -31,15 +31,12 @@ class LineOptimizer {
 		var start = this.lines[this.linepos(line)][0].substr(0, pos);
 		var end = this.lines[this.linepos(line)][0].substr(pos)
 		this.lines[this.linepos(line)][0] = start + textlines[0];
-		this.setcursorpos(this.selectionStart[0], this.selectionStart[1] + textlines[0].length);
 		for (var i = 1; i < textlines.length; i++) {
 			this.newline(textlines[i], line+i-1);
 			this.updateline(this.linepos(line+i));
 			this.updateline(this.linepos(line+i-1));
-			
-			
 		}
-		this.setcursorpos(line+textlines.length-1, textlines[textlines.length-1].length);
+		this.setcursorpos(line+textlines.length-1, textlines.length <= 1 ? this.selectionStart[1] + textlines[0].length : textlines[textlines.length-1].length);
 		this.lines[this.linepos(this.selectionStart[0])][0] += end;
 		this.updateline(this.linepos(this.selectionStart[0]));
 	}
