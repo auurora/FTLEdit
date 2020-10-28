@@ -27,17 +27,15 @@
 	background: #fafafa;
 	z-index: -1;
 }
-.ftledit\.editor\.linehighlight {
+.ftledit\.editor\.linehighlight { /**/
 	width: 100%;
-	height: 1em;
 	position: absolute;
-	top: -1em;
+	top: -100%;
 	left: 0px;
 	background: rgba(40,40,40,0.3);
 }
-.ftledit\.editor\.cursor {
+.ftledit\.editor\.cursor { /**/
 	width: 2px;
-	height: 1em;
 	background: rgba(0,0,0,0.7);
 	position: absolute;
 	top: -100vh;
@@ -55,7 +53,7 @@
 	pointer-events: none;
 }
 .ftledit\.editor\.linenumbers > span {
-	min-height: 1em;
+	
 }
 .ftledit\.editor\.lines > div > span, .ftledit\.editor\.lengthcalculator {
 	white-space: pre;
@@ -74,14 +72,12 @@
 	max-width: 100%;
 	margin-left: 2px;
 	margin-right: 2px;
-	max-height: 1em;
-	min-height: 1em;
 }
 .ftledit\.editor\.lengthcalculator {
 	z-index: -1000;
 	position: absolute;
-	top: -200vh;
-	left: -200vh;
+	top: -20000vh;
+	left: -20000vh;
 	opacity: 0;
 }
 .ftledit\.editor\.linenumber {

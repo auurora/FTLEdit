@@ -1,9 +1,3 @@
-class HTMLEntity {
-	constructor(editorDiv, classname) {
-		this.Element = editorDiv;
-		editorDiv.className = classname == null ? "" : classname;
-	}
-}
 function newinstance(tag, parent, classname) {
 	var d = document.createElement(tag);
 	d.className = classname == null ? "" : classname;
@@ -15,6 +9,31 @@ function div(parent, classname) {
 }
 function span(parent, classname) {
 	return newinstance("span", parent, classname);
+}
+class Stylesheet { // For future (1 js file)
+	styles = [];
+	sheet = null;
+	compilesheet() {
+		var txt = "";
+		for (var key in this.styles) {
+			txt += `${key} {\n`;
+			for (var k in this.styles[key]) txt += `	${k}: ${this.styles[key][k]};\n`;
+			txt += "}\n";
+		}
+	}
+	refresh() {
+		this.sheet.textContent = this.compilesheet();
+	}
+	constructor(styles) {
+		this.styles = styles;
+		this.sheet = newinstance("style", document.body);
+	}
+}
+class HTMLEntity {
+	constructor(editorDiv, classname) {
+		this.Element = editorDiv;
+		editorDiv.className = classname == null ? "" : classname;
+	}
 }
 class LineOptimizer {
 	display = 0;
@@ -58,6 +77,9 @@ class LineOptimizer {
 		this.lines[line][1].innerHTML = "";
 		var spn = span(this.lines[line][1]);
 		spn.textContent = this.lines[line][0];
+		if (this.lines[line][0].length == 0) {
+			spn.textContent = "\n";
+		}
 	}
 	updatelinenumbers() {
 		var displayedLines = this.linenumbers.childNodes.length;
@@ -87,8 +109,10 @@ class LineOptimizer {
 		this.selectionStart[1] = letter;
 		this.selectionEnd[0] = line;
 		this.selectionEnd[1] = letter;
-		this.editor.LineHighlight.style.top = line + "em";
-		this.editor.Cursor.style.top = line + "em";
+		this.editor.updateheights();
+		this.editor.LineHighlight.style.top = "0px";
+		this.editor.LineHighlight.style.transform = `translateY(${line*100}%)`;
+		this.editor.Cursor.style.top = `${line*this.editor.Cursor.getBoundingClientRect().height}px`;
 		var charwidth = 0;
 		charwidth = this.editor.calculateLength(this.lines[this.linepos(line)][0].substr(0,letter))
 		
@@ -166,6 +190,12 @@ class Editor extends HTMLEntity {
 	
 		return length;
 	}
+	updateheights() {
+		this.LengthCalculator.textContent="bruh";
+		this.LineHighlight.style.height = window.getComputedStyle(this.LengthCalculator).height;
+		this.Cursor.style.height = window.getComputedStyle(this.LengthCalculator).height;
+		this.LengthCalculator.textContent="";
+	}
 	constructor(editorDiv) {
 		super(editorDiv, "ftledit.editor");
 		this.Page = div(this.Element, "ftledit.editor.page");
@@ -219,6 +249,7 @@ class Editor extends HTMLEntity {
 			return false;
 		});
 		this.Frame.addEventListener('click', function(event) {
+			editor.updateheights();
 			var editorFrame = editor.Frame.getBoundingClientRect();
 			if (event.clientY > editorFrame.top && event.clientY < editorFrame.bottom &&
 				event.clientX > editorFrame.left && event.clientX < editorFrame.right) {
@@ -231,6 +262,8 @@ class Editor extends HTMLEntity {
 			editor.TextInput.focus();
 		});
 		this.LineOpt = new LineOptimizer(this);
+		
+		
 	}
 	
 }
