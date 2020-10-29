@@ -10,8 +10,8 @@ function div(parent, classname) {
 function span(parent, classname) {
 	return newinstance("span", parent, classname);
 }
-class Stylesheet { // For future (1 js file)
-	styles = [];
+class Stylesheet {
+	styles = {};
 	sheet = null;
 	compilesheet() {
 		var txt = "";
@@ -20,15 +20,21 @@ class Stylesheet { // For future (1 js file)
 			for (var k in this.styles[key]) txt += `	${k}: ${this.styles[key][k]};\n`;
 			txt += "}\n";
 		}
+		return txt;
 	}
 	refresh() {
-		this.sheet.textContent = this.compilesheet();
+		if (this.sheet.styleSheet)
+			this.sheet.styleSheet.cssText = this.compilesheet();
+		else
+			this.sheet.textContent = this.compilesheet();
 	}
 	constructor(styles) {
 		this.styles = styles;
-		this.sheet = newinstance("style", document.body);
+		this.sheet = newinstance("style", document.head);
+		this.refresh();
 	}
 }
+
 class HTMLEntity {
 	constructor(editorDiv, classname) {
 		this.Element = editorDiv;
@@ -36,103 +42,71 @@ class HTMLEntity {
 	}
 }
 class LineOptimizer {
-	display = 0;
 	selectionStart = [0,0];
 	selectionEnd = [0,0];
 	lines = [];
+	firstDisplayed = 0;
+	newline(text, index) {
+		if (index == null || index >= this.lines.length) {
+			this.lines[this.lines.length] = text;
+			return;
+		}
+		this.lines.splice(index, 0, text);
+	}
 	realpos() {
-		return this.selectionStart[1] > this.lines[this.linepos(this.selectionStart[0])][0].length ? this.lines[this.linepos(this.selectionStart[0])][0].length : this.selectionStart[1];
+		return this.selectionStart[1] > this.lines[this.selectionStart[0]].length ? this.lines[this.selectionStart[0]].length : this.selectionStart[1];
 	}
 	append(text) {
 		var line = this.selectionStart[0];
 		var pos = this.realpos();
 		var textlines = text.split('\n');
-		var start = this.lines[this.linepos(line)][0].substr(0, pos);
-		var end = this.lines[this.linepos(line)][0].substr(pos)
-		this.lines[this.linepos(line)][0] = start + textlines[0];
+		var start = this.lines[line].substr(0, pos);
+		var end = this.lines[line].substr(pos)
+		this.lines[line] = start + textlines[0];
 		for (var i = 1; i < textlines.length; i++) {
-			this.newline(textlines[i], line+i-1);
-			this.updateline(this.linepos(line+i));
-			this.updateline(this.linepos(line+i-1));
+			this.newline(textlines[i], line+i);
 		}
 		this.setcursorpos(line+textlines.length-1, textlines.length <= 1 ? this.selectionStart[1] + textlines[0].length : textlines[textlines.length-1].length);
-		this.lines[this.linepos(this.selectionStart[0])][0] += end;
-		this.updateline(this.linepos(this.selectionStart[0]));
-	}
-	newline(text, index) {
-		this.lines[this.lines.length] = [text, div(null, `fltedit.line:${this.lines.length}`)];
-		if (index != null) {
-			var next = this.display.childNodes[index].nextSibling;
-			this.display.insertBefore(this.lines[this.lines.length-1][1], next);
-		} else {
-			this.display.appendChild(this.lines[this.lines.length-1][1]);
-		}
-		this.updateline(this.lines.length-1);
-		this.updatelinenumbers();
-	}
-	linepos(line) {
-		return parseInt(this.display.childNodes[line].className.substr(13));
-	}
-	updateline(line) {
-		this.lines[line][1].innerHTML = "";
-		var spn = span(this.lines[line][1]);
-		spn.textContent = this.lines[line][0];
-		if (this.lines[line][0].length == 0) {
-			spn.textContent = "\n";
-		}
-	}
-	updatelinenumbers() {
-		var displayedLines = this.linenumbers.childNodes.length;
-		
-		if (this.display.childNodes.length > displayedLines) {
-			for (var i = 0; i < (this.display.childNodes.length - displayedLines); i++) {
-				var linenum = span(this.linenumbers);
-				linenum.textContent = displayedLines + i + 1;
-			}
-		} else if(this.display.childNodes.length < displayedLines) {
-			for (var i = 0; i < (displayedLines - this.display.childNodes.length); i++) {
-				this.linenumbers.removeChild(this.linenumbers.lastChild);
-			}
-		}
-	}
-	removeline(line) {
-		var linepos = this.linepos(line);
-		this.lines[linepos][1].parentElement.removeChild(this.lines[linepos][1]);
-		this.lines[linepos] = null;
+		this.lines[this.selectionStart[0]] += end;
+		this.refresh();
 	}
 	setcursorpos(line, letter) {
-		if (line >= this.display.childNodes.length) {
-			this.setcursorpos(this.display.childNodes.length-1, this.lines[this.linepos(this.display.childNodes.length-1)][0].length);
+		if (line >= this.lines.length) {
+			this.setcursorpos(this.lines.length-1, this.lines[this.lines.length-1].length);
 			return;
 		};
 		this.selectionStart[0] = line;
 		this.selectionStart[1] = letter;
 		this.selectionEnd[0] = line;
 		this.selectionEnd[1] = letter;
-		this.editor.updateheights();
-		this.editor.LineHighlight.style.top = "0px";
-		this.editor.LineHighlight.style.transform = `translateY(${line*100}%)`;
-		this.editor.Cursor.style.top = `${line*this.editor.Cursor.getBoundingClientRect().height}px`;
-		var charwidth = 0;
-		charwidth = this.editor.calculateLength(this.lines[this.linepos(line)][0].substr(0,letter))
 		
-		this.editor.Cursor.style.left = `${1+this.linenumbers.clientWidth+charwidth}px`;
-		this.editor.Cursor.scrollIntoView();
+		this.editor.updateheights();
+		this.editor.LineHighlight.style.top = `${line*this.editor.TextHeight}px`;
+		this.editor.Cursor.style.top = `${line*this.editor.TextHeight}px`;
+		var charwidth = this.editor.calculateLength(this.lines[line].substr(0,letter))
+		
+		this.editor.Cursor.style.left = `${1+charwidth}px`;
+
+		var r = this.editor.Cursor.getBoundingClientRect();
+		
+		if (r.top < this.editor.YScrollbar.scrollTop || r.bottom > this.editor.Page.clientHeight) {
+			console.log(r.top < 0 ? r.top : r.bottom-this.editor.Scroller.getBoundingClientRect().clientHeight);
+			this.editor.YScrollbar.scrollTop = r.top < 0 ? r.top : r.bottom-this.editor.Scroller.getBoundingClientRect().clientHeight;
+		}
 	}
-	
 	moveleft() {
 		var pos = this.realpos();
 		if(this.selectionStart[0] == 0 && pos == 0) return;
 		this.setcursorpos(
 			pos == 0 ? this.selectionStart[0]-1 : this.selectionStart[0],
-			pos == 0 ? this.lines[this.linepos(this.selectionStart[0]-1)][0].length : pos-1
+			pos == 0 ? this.lines[this.selectionStart[0]-1].length : pos-1
 		);
 	}
 	moveright() {
 		var pos = this.realpos();
 		this.setcursorpos(
-			pos == this.lines[this.linepos(this.selectionStart[0])][0].length ? this.selectionStart[0]+1 : this.selectionStart[0],
-			pos == this.lines[this.linepos(this.selectionStart[0])][0].length ? 0 : pos+1
+			pos == this.lines[this.selectionStart[0]].length ? this.selectionStart[0]+1 : this.selectionStart[0],
+			pos == this.lines[this.selectionStart[0]].length ? 0 : pos+1
 		);
 	}
 	moveup() {
@@ -153,26 +127,64 @@ class LineOptimizer {
 		
 		this.moveleft();
 		
-		var linepos = this.linepos(line);
-		this.lines[linepos][0] = this.lines[linepos][0].substr(0, pos-1) + this.lines[linepos][0].substr(pos);
+		this.lines[line] = this.lines[line].substr(0, pos-1) + this.lines[line].substr(pos);
 		if (pos == 0 && line != 0) {
-			this.lines[this.linepos(line-1)][0] += this.lines[this.linepos(line)][0];
+			this.lines[line-1] += this.lines[line];
 			this.removeline(line);
-			this.updatelinenumbers();
 		}
-		this.updateline(this.linepos(this.selectionStart[0]));
+		this.refresh();
+	}
+	removeline(line) {
+		this.lines.splice(line, 1);
+	}
+	refresh() {
+		this.showfromline(this.firstDisplayed);
+	}
+	showfromline(line) {
+		line--;
+		line = line < 0 ? 0 : line;
+		this.firstDisplayed = line;
+		this.display.innerHTML = "";
+		this.linenumbers.innerHTML = "";
+		this.editor.updateheights();
+		this.editor.YScrollbarSize.style.height = `${this.lines.length*this.editor.TextHeight}px`;
+		this.editor.Cursor.style.height = `${this.editor.TextHeight}px`;
+		this.editor.LineHighlight.style.height = `${this.editor.TextHeight}px`;
+		//this.display.style.height = `${this.lines.length*this.editor.TextHeight}px`;
+		var len = Math.ceil(this.editor.Page.clientHeight/this.editor.TextHeight)+1;
+		var horizontal = 0;
+		var offset = `${line*this.editor.TextHeight}px`;
+		for (var i = 0; i < len; i++) {
+			if (this.lines.length <= line+i) break;
+			var linenumber = div(this.linenumbers);
+			var linetext = span(linenumber);
+			linetext.textContent = line+i+1;
+			var parent = div(this.display);
+			var text = span(parent);
+			text.textContent = this.lines[line+i];
+			if (this.lines[line+i] == "") text.textContent = " ";
+			linenumber.style.top = offset;
+			parent.style.top = offset;
+		}
+		
+		this.editor.XScrollbarSize.style.width = `${this.display.scrollWidth}px`;
+
+		
 	}
 	constructor(editor) {
 		this.editor = editor;
 		this.linenumbers = editor.LineNumbers;
 		this.display = editor.Lines;
 		this.newline("");
-		this.updatelinenumbers();
+		//for (var i = 0; i < 2000; i++) this.newline(("1").repeat(i));
 		
+		
+		this.showfromline(0);
 	}
 }
 
 var Cursors = [];
+
 var CursorOpacity = 0;
 setInterval(function() {
 	CursorOpacity = CursorOpacity == 0 ? 1 : 0;
@@ -181,38 +193,53 @@ setInterval(function() {
 			Cursors[i].style.opacity = CursorOpacity;
 	}
 }, 500);
-
 class Editor extends HTMLEntity {
+	TextHeight = 16;
+
 	calculateLength(text) {
 		this.LengthCalculator.textContent = text;
-		var length = this.LengthCalculator.clientWidth;
+		var length = this.LengthCalculator.scrollWidth;
 		this.LengthCalculator.textContent = "";
 	
 		return length;
 	}
 	updateheights() {
 		this.LengthCalculator.textContent="bruh";
-		this.LineHighlight.style.height = window.getComputedStyle(this.LengthCalculator).height;
-		this.Cursor.style.height = window.getComputedStyle(this.LengthCalculator).height;
+		this.TextHeight = this.LengthCalculator.scrollHeight;
+		this.LineHighlight.style.height = this.TextHeight;
+		this.Cursor.style.height = this.TextHeight;
 		this.LengthCalculator.textContent="";
 	}
 	constructor(editorDiv) {
 		super(editorDiv, "ftledit.editor");
-		this.Page = div(this.Element, "ftledit.editor.page");
-		this.Background = div(this.Page, "ftledit.editor.background");
-		this.Frame = div(this.Page, "ftledit.editor.frame");
+		this.YScrollHolder = div(this.Element, "ftledit.editor.frame");
 		
-		this.LineHighlight = div(this.Background, "ftledit.editor.linehighlight");
+		this.Page = div(this.YScrollHolder, "ftledit.editor.page");
+		this.YScrollbar = div(this.YScrollHolder, "ftledit.editor.scrollbar y");
+		this.Background = div(this.Element, "ftledit.editor.background");
+		this.LineNumbers = div(this.Page, "ftledit.editor.linenumbers");
+		this.Scroller = div(this.Page, "ftledit.editor.scroller");
+		
+		this.YScrollbarSize = div(this.YScrollbar);
+
+
+		this.XScrollbar = div(this.Scroller, "ftledit.editor.scrollbar x");
+		this.XScrollbarSize = div(this.XScrollbar);
+
+		
 		
 		this.LengthCalculator = span(this.Background, "ftledit.editor.lengthcalculator");
 		
-		this.Cursor = div(this.Page, "ftledit.editor.cursor");
+		
+		
+		this.LineHolder = div(this.Scroller, "ftledit.editor.lineholder");
+		this.Lines = div(this.LineHolder, "ftledit.editor.lines");
+		
+		this.LineHighlight = div(this.LineHolder, "ftledit.editor.linehighlight");
+		this.Cursor = div(this.LineHolder, "ftledit.editor.cursor");
 		
 		Cursors[Cursors.length] = this.Cursor;
-		
-		this.LineNumbers = div(this.Frame, "ftledit.editor.linenumbers");
-		this.Lines = div(this.Frame, "ftledit.editor.lines");
-		
+
 		this.TextInput = newinstance("textarea", this.Element, "ftledit.editor.textinput");
 		this.TextInput.autocapitalize = "off";
 		this.TextInput.spellcheck = false;
@@ -238,6 +265,15 @@ class Editor extends HTMLEntity {
 				editor.LineOpt.backspace();
 			}
 		};
+		this.YScrollbar.addEventListener('scroll', function(e) {
+			editor.LineHolder.style.top = `-${editor.YScrollbar.scrollTop}px`
+			editor.LineNumbers.style.top = `-${editor.YScrollbar.scrollTop}px`
+			editor.LineNumbers.style.height = `${editor.YScrollbar.scrollTop + window.innerHeight}px`
+			editor.LineOpt.showfromline(Math.ceil(editor.YScrollbar.scrollTop/editor.TextHeight)-1);
+		});
+		this.XScrollbar.addEventListener('scroll', function(e) {
+			editor.LineHolder.style.left = `-${editor.XScrollbar.scrollLeft}px`
+		});
 		this.TextInput.addEventListener('input', function(e) {
 			if (KeyEvents[e.code]) { return KeyEvents[e.code](e) };
 			editor.LineOpt.append(editor.TextInput.value);
@@ -248,25 +284,26 @@ class Editor extends HTMLEntity {
 			
 			return false;
 		});
-		this.Frame.addEventListener('click', function(event) {
-			editor.updateheights();
-			var editorFrame = editor.Frame.getBoundingClientRect();
-			if (event.clientY > editorFrame.top && event.clientY < editorFrame.bottom &&
-				event.clientX > editorFrame.left && event.clientX < editorFrame.right) {
-				var line = 
-					Math.ceil((event.clientY-editorFrame.top)/editor.LineOpt.lines[0][1].clientHeight)-1;
-				var pos = window.getSelection().focusOffset;
 
-				editor.LineOpt.setcursorpos(line, pos);
-			}
+		editorDiv.addEventListener('click', function(event) {
+			editor.updateheights();
+			var editorFrame = editor.Scroller.getBoundingClientRect();
+			var lineTop = editor.LineHolder.getBoundingClientRect().top;
+			if (event.clientY > editorFrame.top && event.clientY < editorFrame.bottom && event.clientX > editorFrame.left && event.clientX < editorFrame.right)
+				editor.LineOpt.setcursorpos(Math.ceil((event.clientY-editorFrame.top-lineTop)/editor.TextHeight)-1, window.getSelection().focusOffset);
 			editor.TextInput.focus();
 		});
 		this.LineOpt = new LineOptimizer(this);
-		
-		
+		setTimeout(function() {
+			editor.LineOpt.showfromline(0);
+		},100);
 	}
 	
 }
+
+
+
+
 
 var HTMLEntityClasses = [
 	["ftledit.editor", Editor]
@@ -287,4 +324,11 @@ function HTMLEntityCreator(element) {
 window.addEventListener("load", function() {
 	HTMLEntityCreator(document.getElementsByClassName("morph<ftledit.editor>")[0]); // Just to get it up and running
 	AddCSS("ftledit.css");
+	var Styling = new Stylesheet({
+		".ftledit\\.editor": {
+			"min-width": "50px",
+			"min-height": "16px",
+			"overflow": "hidden"
+		}
+	});
 });
