@@ -5,6 +5,7 @@ Demo: https://auurora.github.io/FTLEdit/
 
 # Usage
 Insert the script into the head tag
+
 `<script src="https://raw.githubusercontent.com/auurora/FTLEdit/main/ftledit.js"></script>`
 
 In your script:
