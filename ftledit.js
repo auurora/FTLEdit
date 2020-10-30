@@ -184,7 +184,6 @@ class LineOptimizer {
 		this.linenumbers = editor.LineNumbers;
 		this.display = editor.Lines;
 		this.newline("");
-		for (var i = 0; i < 200; i++) this.newline(("1").repeat(i));
 		
 		
 		this.showfromline(0);
