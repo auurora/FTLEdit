@@ -31,6 +31,8 @@ class Stylesheet {
 	constructor(styles) {
 		this.styles = styles;
 		this.sheet = newinstance("style", document.head);
+		this.sheet.type = "text/css";
+
 		this.refresh();
 	}
 }
@@ -69,12 +71,14 @@ class LineOptimizer {
 		this.setcursorpos(line+textlines.length-1, textlines.length <= 1 ? this.selectionStart[1] + textlines[0].length : textlines[textlines.length-1].length);
 		this.lines[this.selectionStart[0]] += end;
 		this.refresh();
+		console.log(this.lines);
 	}
 	setcursorpos(line, letter) {
 		if (line >= this.lines.length) {
 			this.setcursorpos(this.lines.length-1, this.lines[this.lines.length-1].length);
 			return;
 		};
+	
 		this.selectionStart[0] = line;
 		this.selectionStart[1] = letter;
 		this.selectionEnd[0] = line;
@@ -88,10 +92,13 @@ class LineOptimizer {
 		this.editor.Cursor.style.left = `${1+charwidth}px`;
 
 		var r = this.editor.Cursor.getBoundingClientRect();
-		
-		if (r.top < this.editor.YScrollbar.scrollTop || r.bottom > this.editor.Page.clientHeight) {
-			console.log(r.top < 0 ? r.top : r.bottom-this.editor.Scroller.getBoundingClientRect().clientHeight);
-			this.editor.YScrollbar.scrollTop = r.top < 0 ? r.top : r.bottom-this.editor.Scroller.getBoundingClientRect().clientHeight;
+		var rtop = line*this.editor.TextHeight;
+		var rbottom = rtop + r.height;
+		var yscrolltop = this.editor.YScrollbar.scrollTop;
+		var scrollheight = this.editor.Scroller.getBoundingClientRect().height;
+		console.log(rbottom);
+		if (rtop < yscrolltop || rbottom > yscrolltop+scrollheight) {
+			this.editor.YScrollbar.scrollTop = rtop < yscrolltop ? rtop : rbottom-scrollheight;
 		}
 	}
 	moveleft() {
@@ -117,7 +124,7 @@ class LineOptimizer {
 	}
 	movedown() {
 		this.setcursorpos(
-			this.selectionStart[0] < this.display.childNodes.length ? this.selectionStart[0]+1 : this.selectionStart[0],
+			this.selectionStart[0] < this.lines.length ? this.selectionStart[0]+1 : this.selectionStart[0],
 			this.selectionStart[1]
 		);
 	}
@@ -144,13 +151,13 @@ class LineOptimizer {
 		line--;
 		line = line < 0 ? 0 : line;
 		this.firstDisplayed = line;
+		console.log(this.firstDisplayed)
 		this.display.innerHTML = "";
 		this.linenumbers.innerHTML = "";
 		this.editor.updateheights();
-		this.editor.YScrollbarSize.style.height = `${this.lines.length*this.editor.TextHeight}px`;
+		this.editor.YScrollbarSize.style.height = `${(this.lines.length*this.editor.TextHeight) + this.editor.XScrollbar.getBoundingClientRect().height}px`;
 		this.editor.Cursor.style.height = `${this.editor.TextHeight}px`;
 		this.editor.LineHighlight.style.height = `${this.editor.TextHeight}px`;
-		//this.display.style.height = `${this.lines.length*this.editor.TextHeight}px`;
 		var len = Math.ceil(this.editor.Page.clientHeight/this.editor.TextHeight)+1;
 		var horizontal = 0;
 		var offset = `${line*this.editor.TextHeight}px`;
@@ -165,6 +172,7 @@ class LineOptimizer {
 			if (this.lines[line+i] == "") text.textContent = " ";
 			linenumber.style.top = offset;
 			parent.style.top = offset;
+			this.linenumbers.style.marginBottom = `${this.editor.XScrollbar.getBoundingClientRect().height}px`;
 		}
 		
 		this.editor.XScrollbarSize.style.width = `${this.display.scrollWidth}px`;
@@ -176,7 +184,7 @@ class LineOptimizer {
 		this.linenumbers = editor.LineNumbers;
 		this.display = editor.Lines;
 		this.newline("");
-		//for (var i = 0; i < 2000; i++) this.newline(("1").repeat(i));
+		for (var i = 0; i < 200; i++) this.newline(("1").repeat(i));
 		
 		
 		this.showfromline(0);
@@ -195,7 +203,13 @@ setInterval(function() {
 }, 500);
 class Editor extends HTMLEntity {
 	TextHeight = 16;
-
+	TabSpaces = 4;
+	getText() {
+		var Doc = "";
+		for (var i = 0; i < this.LineOpt.lines.length; i++)
+			Doc+=this.LineOpt.lines[i];
+		return Doc;
+	}
 	calculateLength(text) {
 		this.LengthCalculator.textContent = text;
 		var length = this.LengthCalculator.scrollWidth;
@@ -218,15 +232,13 @@ class Editor extends HTMLEntity {
 		this.YScrollbar = div(this.YScrollHolder, "ftledit.editor.scrollbar y");
 		this.Background = div(this.Element, "ftledit.editor.background");
 		this.LineNumbers = div(this.Page, "ftledit.editor.linenumbers");
-		this.Scroller = div(this.Page, "ftledit.editor.scroller");
+		this.XFlexbox = div(this.Page, "ftledit.editor.scrollflex");
+		this.Scroller = div(this.XFlexbox, "ftledit.editor.scroller");
 		
 		this.YScrollbarSize = div(this.YScrollbar);
 
-
-		this.XScrollbar = div(this.Scroller, "ftledit.editor.scrollbar x");
+		this.XScrollbar = div(this.XFlexbox, "ftledit.editor.scrollbar x");
 		this.XScrollbarSize = div(this.XScrollbar);
-
-		
 		
 		this.LengthCalculator = span(this.Background, "ftledit.editor.lengthcalculator");
 		
@@ -235,6 +247,8 @@ class Editor extends HTMLEntity {
 		this.LineHolder = div(this.Scroller, "ftledit.editor.lineholder");
 		this.Lines = div(this.LineHolder, "ftledit.editor.lines");
 		
+		
+
 		this.LineHighlight = div(this.LineHolder, "ftledit.editor.linehighlight");
 		this.Cursor = div(this.LineHolder, "ftledit.editor.cursor");
 		
@@ -263,6 +277,10 @@ class Editor extends HTMLEntity {
 			},
 			"Backspace": function (e) {
 				editor.LineOpt.backspace();
+			},
+			"Tab": function(e) {
+				editor.LineOpt.append((" ").repeat(editor.TabSpaces));
+				return true;
 			}
 		};
 		this.YScrollbar.addEventListener('scroll', function(e) {
@@ -280,17 +298,37 @@ class Editor extends HTMLEntity {
 			editor.TextInput.value = "";
 		});
 		this.TextInput.addEventListener('keydown', function(e) {
-			if (KeyEvents[e.code]) { return KeyEvents[e.code](e) };
+			if (KeyEvents[e.code]) { 
+				e.preventDefault();
+				return KeyEvents[e.code](e) 
+			};
 			
 			return false;
 		});
-
 		editorDiv.addEventListener('click', function(event) {
 			editor.updateheights();
 			var editorFrame = editor.Scroller.getBoundingClientRect();
 			var lineTop = editor.LineHolder.getBoundingClientRect().top;
-			if (event.clientY > editorFrame.top && event.clientY < editorFrame.bottom && event.clientX > editorFrame.left && event.clientX < editorFrame.right)
-				editor.LineOpt.setcursorpos(Math.ceil((event.clientY-editorFrame.top-lineTop)/editor.TextHeight)-1, window.getSelection().focusOffset);
+			if (event.clientY > editorFrame.top && event.clientY < editorFrame.bottom && event.clientX > editorFrame.left && event.clientX < editorFrame.right) {
+				var line = Math.ceil((event.clientY-editorFrame.top-lineTop)/editor.TextHeight)-1;
+				// Begin bad method to determine character clicked
+				if (line < editor.LineOpt.lines.length) {
+					var linestr = editor.LineOpt.lines[line];
+					var character = 0;
+					var correctedX = event.clientX-editorFrame.left;
+					if (linestr.length > 0) {
+						if (correctedX > editor.calculateLength(linestr)) {
+							character = linestr.length;
+						} else if(correctedX > 0) { // dont do the big calc if not needed
+							for (var i = 0; i < linestr.length; i++) {
+								character = i;
+								if (correctedX < editor.calculateLength(linestr.substr(0,i+1))) break;
+							}
+						}
+					} 
+				}
+				editor.LineOpt.setcursorpos(Math.ceil((event.clientY-editorFrame.top-lineTop)/editor.TextHeight)-1, character);
+			}
 			editor.TextInput.focus();
 		});
 		this.LineOpt = new LineOptimizer(this);
@@ -307,13 +345,7 @@ class Editor extends HTMLEntity {
 
 var HTMLEntityClasses = [
 	["ftledit.editor", Editor]
-];
-function AddCSS(location) {
-	var link = document.createElement("link");
-	link.href = location;
-	link.rel = "stylesheet";
-	document.head.appendChild(link);
-}	
+];	
 function HTMLEntityCreator(element) {
 	var morphreg = /morph<[^><]*>/; // cant use positive lookbehind since not supported on some browsers
 	if (element.className.match(morphreg)[0] != "")
@@ -322,13 +354,178 @@ function HTMLEntityCreator(element) {
 				return new HTMLEntityClasses[i][1](element);
 }
 window.addEventListener("load", function() {
-	HTMLEntityCreator(document.getElementsByClassName("morph<ftledit.editor>")[0]); // Just to get it up and running
-	AddCSS("ftledit.css");
 	var Styling = new Stylesheet({
 		".ftledit\\.editor": {
 			"min-width": "50px",
 			"min-height": "16px",
 			"overflow": "hidden"
-		}
+		},
+		".ftledit\\.editor\\.scrollbar": {
+			"flex-shrink": 0,
+		},
+		".ftledit\\.editor\\.scrollbar.y": {
+			"overflow-y": "scroll",
+			"height": "100%",
+			"right": "0px",
+		},
+		".ftledit\\.editor\\.scrollbar.y > div": {
+			"overflow-y": "hidden",
+			"width": "1px",
+		},
+		".ftledit\\.editor\\.scrollbar.x": {
+			"overflow-x": "scroll",
+			"width": "100%",
+			"bottom": "0px",
+			"z-index": 2,
+		},
+		".ftledit\\.editor\\.scrollbar.x > div": {
+			"overflow-x": "hidden",
+			"height": "1px",
+		},
+		".ftledit\\.editor\\.page": {
+			"flex-grow": 2,
+			"min-height": "100%",
+			"height": "100%",
+			"display": "flex",
+			"flex-direction": "row",
+			"overflow": "hidden",
+		},
+		".ftledit\\.editor\\.frame": {
+			"position": "relative",
+			"min-width": "100%",
+			"min-height": "100%",
+			"height": "100%",
+			"width": "100%",
+			"display": "flex",
+			"flex-direction": "row",
+			"overflow": "hidden",
+		},
+		".ftledit\\.editor\\.content": {
+			"height": "auto",
+			"width": "auto",
+			"min-height": "100%",
+			"min-width": "100%",
+			"display": "flex",
+			"flex-direction": "row",
+			
+		},
+		".ftledit\\.editor\\.background": {
+			"position": "absolute",
+			"left": "0px",
+			"top": "0px",
+			"min-width": "100%",
+			"min-height": "100%",
+			"height": "auto",
+			"width": "auto",
+			"background": "#fafafa",
+			"z-index": "-1",
+		},
+		".ftledit\\.editor\\.linehighlight": { /**/
+			"width": "100%",
+			"position": "absolute",
+			"top": "-100%",
+			"left": "0px",
+			"background": "rgba(40,40,40,0.3)",
+		},
+		".ftledit\\.editor\\.cursor": { /**/
+			"width": "2px",
+			"background": "rgba(0,0,0,0.7)",
+			"position": "absolute",
+			"top": "-100vh",
+		},
+		".ftledit\\.editor\\.linenumbers": {
+			"background": "#ddd",
+			"width": "auto",
+			"min-width": "18px",
+			"height": "auto",
+			"pointer-events": "none",
+			"position": "relative",
+			"padding-left": "16px",
+			"padding-right": "16px",
+			"flex-shrink": 0,
+		},
+		".ftledit\\.editor\\.linenumbers > div": {
+			"position": "relative",
+			"right": "0px",
+		},
+		".ftledit\\.editor\\.linenumbers > div > span": {
+			"direction": "rtl",
+			"min-width": "100%",
+			"float": "right",
+			"pointer-events": "none",
+			"user-select": "none",
+			"-moz-user-select": "none",
+			"-webkit-user-select": "none",
+		},
+		".ftledit\\.editor\\.lines > div > span, .ftledit\\.editor\\.lengthcalculator": {
+			"white-space": "pre",
+			"pointer-events": "none",
+			"word-break": "break-all",
+			"-webkit-touch-callout": "none",
+			"-webkit-user-select": "none",
+			"-khtml-user-select": "none",
+			"-moz-user-select": "none",
+			"-ms-user-select": "none",
+			"user-select": "none",
+		},
+		".ftledit\\.editor\\.scrollflex": {
+			"flex-grow": 2,
+			"min-height": "100%",
+			
+			"max-height": "100%",
+			"overflow": "hidden",
+			"position": "relative",
+			"display": "flex",
+			"flex-direction": "column",
+		},
+		".ftledit\\.editor\\.scroller": {
+			"flex-grow": 2,
+			"overflow": "hidden",
+		},
+		".ftledit\\.editor\\.lineholder": {
+			"height": "auto",
+			"width": "auto",
+			"cursor": "text",
+			"position": "relative",
+			"left": "0px",
+			"width": "100%",
+			"height": "100%",
+		},
+		".ftledit\\.editor\\.lines": {
+			"top": "0px",
+			"cursor": "text",
+			"position": "absolute",
+			"left": "0px",
+			"min-width": "100%",
+			"min-height": "100%",
+		},
+		".ftledit\\.editor\\.lines > div": {
+			"max-width": "100%",
+			"margin-left": "2px",
+			"margin-right": "2px",
+			"position": "relative",
+		},
+		".ftledit\\.editor\\.lengthcalculator": {
+			"z-index": "-1000",
+			"position": "absolute",
+			"top": "-20000vh",
+			"left": "-20000vh",
+			"width": "1px",
+			"height": "1px",
+			"opacity": 1,
+		},
+		".ftledit\\.editor\\.textinput": {
+			"opacity": 0,
+			"font-size": "1px",
+			"height": "1px",
+			"width": "1px",
+			"max-width": "1px",
+			"max-height": "1px",
+			"position": "fixed",
+			"z-index": -1000,
+			"left": 0,
+			"top": 0,
+		},
 	});
+	HTMLEntityCreator(document.getElementsByClassName("morph<ftledit.editor>")[0]); // Just to get it up and running
 });
