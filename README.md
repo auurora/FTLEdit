@@ -19,6 +19,8 @@ Optimized rendering
 
 Easy to implement
 
+Able to display non-monospace fonts with correct cursor positioning, which editors like Ace struggle with
+
 # Usage
 Insert the script into the head tag
 
