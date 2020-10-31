@@ -12,7 +12,7 @@ window.FTLThemeReady = function() {
 		},
 		".ftledit\\.editor\\.cursor": {
 			"background": "rgba(255,255,255,0.7)",
-			"transition": "top 0.1s, left 0.1s",
+			"transition": "top 0.1s",
 		},
 		".ftledit\\.editor\\.linenumbers": {
 			"background": "#404040",
