@@ -323,10 +323,23 @@ class Editor extends HTMLEntity {
 						if (correctedX > editor.calculateLength(linestr)) {
 							character = linestr.length;
 						} else if(correctedX > 0) { // dont do the big calc if not needed
-							for (var i = 0; i < linestr.length; i++) {
-								character = i;
-								if (correctedX < editor.calculateLength(linestr.substr(0,i+1))) break;
-							}
+							var A = linestr.length/2 - ((linestr.length/2)%1);
+							var B = linestr.length;
+							while (true)
+								if (correctedX < editor.calculateLength(linestr.substr(0,A))) {
+									if (B-A<=1) {
+										character=A-1;
+										break;
+									}
+									B = A;
+									A = A/2 - ((A/2)%1);
+								} else {
+									if (B-A<=1) {
+										character=A;
+										break;
+									}
+									A += (B-A)/2 - ( ((B-A)/2)%1 );
+								}
 						}
 					} 
 				}
