@@ -6,11 +6,17 @@ Demo: https://auurora.github.io/FTLEdit/
 # Features
 
 Super fast and efficient editing
+
 Able to edit large documents (Tested with 2,000,000+ lines)
+
 Low RAM consumption
+
 Lightweight and only requires 1 script tag to be included
+
 Fully customizable with CSS 
+
 Optimized rendering
+
 Easy to implement
 
 # Usage
