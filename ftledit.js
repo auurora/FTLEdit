@@ -23,16 +23,13 @@ class Stylesheet {
 		return txt;
 	}
 	refresh() {
-		if (this.sheet.styleSheet)
-			this.sheet.styleSheet.cssText = this.compilesheet();
-		else
-			this.sheet.textContent = this.compilesheet();
+		if (this.sheet.styleSheet)this.sheet.styleSheet.cssText = this.compilesheet();
+		else this.sheet.textContent = this.compilesheet();
 	}
 	constructor(styles) {
 		this.styles = styles;
 		this.sheet = newinstance("style", document.head);
 		this.sheet.type = "text/css";
-
 		this.refresh();
 	}
 }
@@ -71,7 +68,6 @@ class LineOptimizer {
 		this.setcursorpos(line+textlines.length-1, textlines.length <= 1 ? this.selectionStart[1] + textlines[0].length : textlines[textlines.length-1].length);
 		this.lines[this.selectionStart[0]] += end;
 		this.refresh();
-		console.log(this.lines);
 	}
 	setcursorpos(line, letter) {
 		if (line >= this.lines.length) {
@@ -96,9 +92,9 @@ class LineOptimizer {
 		var rbottom = rtop + r.height;
 		var yscrolltop = this.editor.YScrollbar.scrollTop;
 		var scrollheight = this.editor.Scroller.getBoundingClientRect().height;
-		console.log(rbottom);
+		
 		if (rtop < yscrolltop || rbottom > yscrolltop+scrollheight) {
-			this.editor.YScrollbar.scrollTop = rtop < yscrolltop ? rtop : rbottom-scrollheight;
+			this.editor.YScrollbar.scrollTop = rtop < yscrolltop ? rtop : rbottom-(scrollheight)+(this.editor.XScrollbar.getBoundingClientRect());
 		}
 	}
 	moveleft() {
@@ -151,7 +147,7 @@ class LineOptimizer {
 		line--;
 		line = line < 0 ? 0 : line;
 		this.firstDisplayed = line;
-		console.log(this.firstDisplayed)
+		
 		this.display.innerHTML = "";
 		this.linenumbers.innerHTML = "";
 		this.editor.updateheights();
@@ -161,6 +157,7 @@ class LineOptimizer {
 		var len = Math.ceil(this.editor.Page.clientHeight/this.editor.TextHeight)+1;
 		var horizontal = 0;
 		var offset = `${line*this.editor.TextHeight}px`;
+		var spaces = (" ").repeat(this.editor.TabSpaces);
 		for (var i = 0; i < len; i++) {
 			if (this.lines.length <= line+i) break;
 			var linenumber = div(this.linenumbers);
@@ -168,7 +165,7 @@ class LineOptimizer {
 			linetext.textContent = line+i+1;
 			var parent = div(this.display);
 			var text = span(parent);
-			text.textContent = this.lines[line+i];
+			text.textContent = this.lines[line+i].replace("\t", spaces);
 			if (this.lines[line+i] == "") text.textContent = " ";
 			linenumber.style.top = offset;
 			parent.style.top = offset;
@@ -203,6 +200,11 @@ setInterval(function() {
 class Editor extends HTMLEntity {
 	TextHeight = 16;
 	TabSpaces = 4;
+	UseTabs = true;
+	Selecting = false;
+	IntellisenseCallback = function(line, word) {
+
+	}
 	getText() {
 		var Doc = "";
 		for (var i = 0; i < this.LineOpt.lines.length; i++)
@@ -210,7 +212,7 @@ class Editor extends HTMLEntity {
 		return Doc;
 	}
 	calculateLength(text) {
-		this.LengthCalculator.textContent = text;
+		this.LengthCalculator.textContent = text.replace("\t", (" ").repeat(this.TabSpaces));
 		var length = this.LengthCalculator.scrollWidth;
 		this.LengthCalculator.textContent = "";
 	
@@ -278,7 +280,7 @@ class Editor extends HTMLEntity {
 				editor.LineOpt.backspace();
 			},
 			"Tab": function(e) {
-				editor.LineOpt.append((" ").repeat(editor.TabSpaces));
+				editor.LineOpt.append(editor.UseTabs ? "\t" : ((" ").repeat(editor.TabSpaces)));
 				return true;
 			}
 		};
@@ -290,6 +292,7 @@ class Editor extends HTMLEntity {
 		});
 		this.XScrollbar.addEventListener('scroll', function(e) {
 			editor.LineHolder.style.left = `-${editor.XScrollbar.scrollLeft}px`
+			editor.LineHighlight.style.left = `${editor.XScrollbar.scrollLeft}px`
 		});
 		this.TextInput.addEventListener('input', function(e) {
 			if (KeyEvents[e.code]) { return KeyEvents[e.code](e) };
@@ -304,7 +307,8 @@ class Editor extends HTMLEntity {
 			
 			return false;
 		});
-		editorDiv.addEventListener('click', function(event) {
+		editorDiv.addEventListener('mousedown', function(event) {
+			this.Selecting = true;
 			editor.updateheights();
 			var editorFrame = editor.Scroller.getBoundingClientRect();
 			var lineTop = editor.LineHolder.getBoundingClientRect().top;
@@ -314,7 +318,7 @@ class Editor extends HTMLEntity {
 				if (line < editor.LineOpt.lines.length) {
 					var linestr = editor.LineOpt.lines[line];
 					var character = 0;
-					var correctedX = event.clientX-editorFrame.left;
+					var correctedX = event.clientX-editorFrame.left+editor.XScrollbar.scrollLeft;
 					if (linestr.length > 0) {
 						if (correctedX > editor.calculateLength(linestr)) {
 							character = linestr.length;
@@ -328,6 +332,11 @@ class Editor extends HTMLEntity {
 				}
 				editor.LineOpt.setcursorpos(Math.ceil((event.clientY-editorFrame.top-lineTop)/editor.TextHeight)-1, character);
 			}
+		});
+		editorDiv.addEventListener('mouseup', function(event) {
+			this.Selecting = false;
+		});
+		editorDiv.addEventListener('click', function(event) {
 			editor.TextInput.focus();
 		});
 		this.LineOpt = new LineOptimizer(this);
@@ -339,20 +348,23 @@ class Editor extends HTMLEntity {
 }
 
 
-
-
-
-var HTMLEntityClasses = [
-	["ftledit.editor", Editor]
-];	
-function HTMLEntityCreator(element) {
-	var morphreg = /morph<[^><]*>/; // cant use positive lookbehind since not supported on some browsers
-	if (element.className.match(morphreg)[0] != "")
-		for (var i = 0; i < HTMLEntityClasses.length; i++) 
-			if ((HTMLEntityClasses[i][0] + ">") == element.className.match(morphreg)[0].substr(6))
-				return new HTMLEntityClasses[i][1](element);
-}
 window.addEventListener("load", function() {
+	window.FTLThemeStyle = new Stylesheet({
+		".ftledit\\.editor\\.background": {
+			"background": "#fafafa",
+		},
+		".ftledit\\.editor\\.linehighlight": {
+			"background": "rgba(40,40,40,0.3)",
+		},
+		".ftledit\\.editor\\.cursor": {
+			"background": "rgba(0,0,0,0.7)",
+		},
+		".ftledit\\.editor\\.linenumbers": {
+			"background": "#ddd",
+		},
+	});
+	window.FTLThemeStyle.sheet.id="FTLEditTheme";
+	if (window.FTLThemeReady!=null) FTLThemeReady();
 	var Styling = new Stylesheet({
 		".ftledit\\.editor": {
 			"min-width": "50px",
@@ -416,24 +428,20 @@ window.addEventListener("load", function() {
 			"min-height": "100%",
 			"height": "auto",
 			"width": "auto",
-			"background": "#fafafa",
 			"z-index": "-1",
 		},
-		".ftledit\\.editor\\.linehighlight": { /**/
+		".ftledit\\.editor\\.linehighlight": {
 			"width": "100%",
 			"position": "absolute",
 			"top": "-100%",
 			"left": "0px",
-			"background": "rgba(40,40,40,0.3)",
 		},
-		".ftledit\\.editor\\.cursor": { /**/
+		".ftledit\\.editor\\.cursor": {
 			"width": "2px",
-			"background": "rgba(0,0,0,0.7)",
 			"position": "absolute",
 			"top": "-100vh",
 		},
 		".ftledit\\.editor\\.linenumbers": {
-			"background": "#ddd",
 			"width": "auto",
 			"min-width": "18px",
 			"height": "auto",
@@ -526,5 +534,4 @@ window.addEventListener("load", function() {
 			"top": 0,
 		},
 	});
-	HTMLEntityCreator(document.getElementsByClassName("morph<ftledit.editor>")[0]); // Just to get it up and running
 });

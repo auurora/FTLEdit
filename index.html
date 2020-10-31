@@ -3,8 +3,14 @@
 	<head>
 		<title>ftledit demo</title>
 		<script src="ftledit.js"></script>
+		<script src="Themes/SimpleDark.js"></script>
+		<script>
+			window.addEventListener("load", function() {
+				var FTLEditor = new Editor(document.getElementById("ftl"));
+			});
+		</script>
 	</head>
 	<body style="margin: 0">
-		<div class="morph<ftledit.editor>" style="font-family: 'Consolas'; width: 100vw; height: 100vh" ></div>
+		<div id="ftl" style="font-family: 'Consolas'; width: 100vw; height: 100vh" ></div>
 	</body>
 </html>
