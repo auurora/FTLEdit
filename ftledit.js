@@ -144,9 +144,9 @@ class LineOptimizer {
 		this.showfromline(this.firstDisplayed);
 	}
 	showfromline(line) {
-		line--;
 		line = line < 0 ? 0 : line;
 		this.firstDisplayed = line;
+		line--;
 		
 		this.display.innerHTML = "";
 		this.linenumbers.innerHTML = "";
